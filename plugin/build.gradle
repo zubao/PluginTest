@@ -1,0 +1,249 @@
+apply plugin: 'groovy'
+apply plugin: 'maven'
+apply plugin: 'signing'
+
+dependencies {
+    implementation gradleApi()
+    implementation localGroovy()
+
+}
+
+repositories {
+    mavenCentral()
+}
+
+// 发布到本地repo
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            //设置插件的GAV参数
+            pom.groupId = 'com.pa.plugin'//你的包名
+            pom.artifactId = 'myPlugin'
+            pom.version = '1.0.0'//版本号
+            //文件发布到下面目录  ../是父目录
+            repository(url: uri('../repo'))
+        }
+    }
+}
+
+// 发布到nexus
+
+//
+//// 获取仓库url
+//def getRepositoryUrl() {
+//    return "http://localhost:8081/nexus/content/repositories/Maven/"
+//}
+//
+//def siteUrl = 'https://github.com/zubao'
+//def gitUrl = 'https://github.com/zubao'
+//
+//configurations {
+//    deployerJars
+//}
+//
+//// 判断版本是Release or Snapshots
+//def isReleaseBuild() {
+//    return true
+//}
+//
+//// 进行数字签名
+//signing {
+//    // 当 发布版本 & 存在"uploadArchives"任务时，才执行
+//    required { isReleaseBuild() && gradle.taskGraph.hasTask("uploadArchives") }
+//    sign configurations.archives
+//}
+//
+//
+//// 生成javadoc.jar
+//task androidJavadocsJar(type: Jar, dependsOn: javadoc) {
+//    // 指定文档名称
+//    classifier = 'javadoc'
+//    from javadoc.destinationDir
+//}
+//
+//// 生成sources.jar
+//task androidSourcesJar(type: Jar) {
+//    classifier = 'sources'
+//    from sourceSets.main.allSource
+//}
+//
+//// 产生相关配置文件的任务
+//artifacts {
+//    archives androidSourcesJar
+//    archives androidJavadocsJar
+//}
+//uploadArchives {
+//    repositories {
+//        mavenDeployer {
+//            beforeDeployment {
+//                MavenDeployment deployment -> signing.signPom(deployment)
+//            }
+//
+//            pom.version = "1.0.0"
+//            pom.artifactId = "myPlugin"
+//            pom.groupId = "com.pa.plugin"
+//
+//            repository(url: getRepositoryUrl()) {
+//                authentication(userName: "admin", password: "admin123") // maven授权信息
+//            }
+//
+//            // （非必须）库生成的pom.xml文件内容
+//            pom {
+//                project {
+//                    packaging 'jar'
+//                    name 'The official Android SDK Plugin for SkyEye Analytics.'
+//                    url siteUrl
+//
+//                    licenses {
+//                        license {
+//                            name 'The Apache Software License, Version 2.0'
+//                            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+//                        }
+//                    }
+//                    developers {
+//                        developer {
+//                            id 'zubao'
+//                            name 'wang li'
+//                            email 'lipeil4195@gmail.com'
+//                        }
+//                    }
+//
+//                    scm {
+//                        connection gitUrl
+//                        developerConnection gitUrl
+//                        url siteUrl
+//                    }
+//                }
+//            }
+//        }
+//    }
+//}
+
+
+
+// 发布到jcenter
+apply plugin: 'com.jfrog.bintray'
+apply plugin: 'maven-publish'
+apply plugin: 'java'
+
+version = '1.0.0'
+project.archivesBaseName = "myPlugin"
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+task sourceJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+ext {
+    pomFilePath = "${project.buildDir.absolutePath}/tmp/pom.xml"
+    pomFile = file(pomFilePath)
+}
+
+configurations {
+    pom
+}
+
+artifacts {
+    archives jar
+    archives sourceJar
+    archives javadocJar
+    if (pomFile.exists()) {
+        pom pomFile
+    }
+}
+
+task signJars(type: Sign, dependsOn: [jar, javadocJar, sourceJar]) {
+    sign configurations.archives
+}
+
+task signPom(type: Sign) {
+    sign configurations.pom
+}
+
+if (project.ext.pomFile.exists()) {
+    task preparePublication(dependsOn: [signJars, signPom])
+} else {
+    task preparePublication(dependsOn: signJars)
+}
+
+def getSignatureFiles = {
+    def allFiles = project.tasks.signJars.signatureFiles.collect{it}
+    def signedSources = allFiles.find{ it.name.contains('-sources') }
+    def signedJavadoc = allFiles.find{ it.name.contains('-javadoc') }
+    def signedJar = (allFiles - [signedSources, signJars])[0]
+    return [
+            [archive: signedSources, classifier: 'sources', extension: 'jar.asc'],
+            [archive: signedJavadoc, classifier: 'javadoc', extension: 'jar.asc'],
+            [archive: signedJar, classifier: 'null', extension: 'jar.asc']
+    ]
+}
+
+def getPomSignature = {
+    return project.tasks.signPom.signatureFiles.collect{ it }[0]
+}
+
+def siteUrl = 'https://github.com/zubao/plugin'
+def gitUrl = 'https://github.com/zubao/plugin.git'
+def issueUrl = 'https://github.com/zubao/plugin/issues'
+group = "com.pa.plugin"
+
+install {
+    repositories.mavenInstaller {
+        pom {
+            project {
+                packaging 'jar'
+                name 'The official Android SDK Plugin for SkyEye Analytics.'
+                url siteUrl
+
+                licenses {
+                    license {
+                        name 'The Apache Software License, Version 2.0'
+                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        id 'zubao'
+                        name 'wang li'
+                        email 'lipeil4195@gmail.com'
+                    }
+                }
+
+                scm {
+                    connection gitUrl
+                    developerConnection gitUrl
+                    url siteUrl
+                }
+            }
+        }
+    }
+}
+
+Properties properties = new Properties()
+properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+bintray {
+    user    = 'zubao'
+    key     = '31d1050f91fe255d5d9ee7804cb311661f59d8aa'
+    println user
+    println key
+    configurations = ['archives']
+    pkg {
+        userOrg = 'zubao'
+        repo = "Maven"
+        name = "myPlugin"
+        desc = 'The official Android SDK Plugin for plugin Analytics.'
+        websiteUrl = siteUrl
+        vcsUrl = gitUrl
+        issueTrackerUrl = issueUrl
+        licenses = ["Apache-2.0"]
+        labels = 'Groovy'
+        publicDownloadNumbers = true
+        publish = true
+    }
+}

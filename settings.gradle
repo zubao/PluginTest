@@ -1,0 +1,2 @@
+include ':app', ':com.pa.gradleplugin', ':plugin'
+rootProject.name='PluginTest'

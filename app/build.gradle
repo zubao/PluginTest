@@ -1,0 +1,46 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 29
+    buildToolsVersion "29.0.2"
+    defaultConfig {
+        applicationId "com.pa.plugintest"
+        minSdkVersion 15
+        targetSdkVersion 29
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'androidx.appcompat:appcompat:1.0.2'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.1'
+}
+
+
+//使用插件
+apply plugin: CustomPlugin
+apply plugin: 'com.pa.buildsrc'
+apply plugin: 'com.pa.plugin'
+
+//自定义插件：实现Plugin类接口，重写apply方法
+class CustomPlugin implements Plugin<Project> {
+    @Override
+    void apply(Project project) {
+        project.task('CustomPluginTask') {
+            doLast {
+                println "大家好,我是一个自定义插件，在这里写下你的具体功能"
+            }
+        }
+    }
+}
